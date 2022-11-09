@@ -8,7 +8,7 @@
 pragma solidity ^0.8.9;
 contract rent{
     // string[3] car = ["1:Honda", "2:BMW", "3:Audi"];
-     address payable public owner;
+    address payable public owner;
     uint startTime;
     uint totalTime;
     enum carStatus{available, rented,onHold}
@@ -19,11 +19,20 @@ contract rent{
         uint carID;
         string carName;
         address rentedBy;
+        uint startTime;
         carStatus checkAvailability;
+    }
+    constructor(){
+        owner =msg.sender;       
     }
     car[] carList;
     mapping (address => car)userStatus;
     mapping(uint =>  car) carMapping;
+    modifier notOwner(){
+        owner != msg.sender;
+        _;
+    }
+
     function addCar(string memory _carName,uint _carID)public {
         car memory c;
         c.carName=_carName;
@@ -36,7 +45,7 @@ contract rent{
         return carList;
     }
     
-    function RentCar() public {
+    function RentCar(uint _carID) public {
         // if (_carname == bytes32("Honda")){
         //     HondaStatus=carStatus.rented;
         // }
@@ -48,32 +57,43 @@ contract rent{
         // }
         // startTime = block.timestamp;
         // userStatus[msg.sender]= _carname;
+        
+        require(carMapping[_carID].checkAvailability == carStatus.available,"This car is already rented by someone");
+        carMapping[_carID].rentedBy = msg.sender;
+        carMapping[_carID].startTime = block.timestamp;
+        carMapping[_carID].checkAvailability = carStatus.rented;
     }
 
-    // function stopCar(bytes32 _carname) public returns(uint){
-    //     require(userStatus[msg.sender]==_carname,"You not have rented this car");
-    //     totalTime=(block.timestamp - startTime)/60;
+    function stopCar(uint _carID) public returns(uint){
+        // require(userStatus[msg.sender]==_carname,"You not have rented this car");
+        // totalTime=(block.timestamp - startTime)/60;
+        require(carMapping[_carID].rentedBy == msg.sender,"This car is not rented by you");
+        totalTime = (block.timestamp - carMapping[_carID].startTime)/60;
+        carMapping[_carID].checkAvailability = carStatus.onHold;
+        return totalTime;
+    }
 
-    //     return totalTime;
-
-    // }
-
-    // function LeaveCar(bytes32 _carname) public payable {
-    //     require(userStatus[msg.sender]==_carname,"You not have rented this car");
-    //     // totalTime=(block.timestamp - startTime)/60;
-    //     require(msg.value==totalTime,"Please enter correct amount");
-    //     // owner.transfer(totalTime);
-    //     // //  if (_carname == bytes32("Honda")){
-    //     // //     HondaStatus=carStatus.available;
-    //     // // }
-    //     // // if (_carname == bytes32("BMW")){
-    //     // //     BMWStatus=carStatus.available;
-    //     // // }
-    //     // // if (_carname == bytes32("Audi")){
-    //     // //     AudiStatus=carStatus.available;
-    //     // // }
-
-    // }
+    function LeaveCar(uint _carID) public payable {
+        // require(userStatus[msg.sender]==_carname,"You not have rented this car");
+        // totalTime=(block.timestamp - startTime)/60;
+        // require(msg.value==totalTime,"Please enter correct amount");
+        // owner.transfer(totalTime);
+        //  if (_carname == bytes32("Honda")){
+        //     HondaStatus=carStatus.available;
+        // }
+        // if (_carname == bytes32("BMW")){
+        //     BMWStatus=carStatus.available;
+        // }
+        // if (_carname == bytes32("Audi")){
+        //     AudiStatus=carStatus.available;
+        // }
+         require(carMapping[_carID].rentedBy == msg.sender,"This car is not rented by you");
+         require(msg.value == totalTime,"Please enter correct amount of ether");
+         require(carMapping[_carID].checkAvailability== carStatus.onHold,"Please Stop your car first");
+         owner.transfer(msg.value);
+         carMapping[_carID].checkAvailability = carStatus.available;
+         
+    }
 
 
 }
