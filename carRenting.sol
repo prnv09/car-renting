@@ -1,18 +1,19 @@
 //SPDX-License-Identifier:MIT
-// other than the owner can rent a Car
-// a person renting a Car will pay as per the usage ( 1ether per min )
-// usage time will be calculated from rent start time - to rent end time
-// a person can rent multiple Cars at a time ( optional )
-// 1 Car can we rent by only one person at a time ( optional )
 
+import "./alpha.sol";
 pragma solidity ^0.8.9;
-contract rent{
-
+contract rent is alpha{
+    constructor(){
+        owner =payable(msg.sender);       
+    }
+    //STATE VARIABLES ===========================================================================================
     address payable public owner;
     uint startTime;
     uint totalTime;
     enum carStatus{available, rented}
     uint totalRent;
+
+    //CAR STRUCTURES ===========================================================================================
     struct car {
         uint carID;
         string carName;
@@ -24,20 +25,23 @@ contract rent{
         uint carID;
         string carName;
     }
-    constructor(){
-        owner =payable(msg.sender);       
-    }
+  
     carInfo[] carList;
+
+    //MAPPING & MODIFIER =====================================================================================================
     mapping (address => car)userStatus;
     mapping(uint =>  car) carMapping;
     modifier notOwner(){
        require(owner != msg.sender,"Owner can not rent his own car");
         _;
     }
+
+    //EVENTS ==================================================================================================
     event carRented(address indexed renter,string name,uint id);
-    event carParked(address indexed renter,string name,uint id,uint rent);
+    event carParked(address indexed renter,string name,uint id,uint rent,uint time);
     event rentPaid(address indexed renter,string name,uint id, uint rent);
 
+//OWNER CAN ADD CAR ==============================================================================================
     function addCar(string memory _carName,uint _carID)public {
         car memory c;
         carInfo memory _carInfo;
@@ -65,19 +69,21 @@ contract rent{
     function checkRent(uint _carID) public returns(uint){
         require(carMapping[_carID].rentedBy == msg.sender,"This car is not rented by you");
         totalTime = (block.timestamp - carMapping[_carID].startTime)/60;
-        // carMapping[_carID].checkAvailability = carStatus.onHold;
-        totalRent = (totalTime*1000000000000000000);
-        emit carParked(msg.sender,carMapping[_carID].carName,_carID,totalRent);
+        // ether payment feature 
+        // totalRent = (totalTime*1000000000000000000);
+        totalRent = totalTime;
+        emit carParked(msg.sender,carMapping[_carID].carName,_carID,totalRent,totalTime);
         return totalRent;
-
     }
 
-    function LeaveCar(uint _carID) public payable {
+    function payRent(uint _carID,uint _rent) public payable {
          require(carMapping[_carID].rentedBy == msg.sender,"This car is not rented by you");
-         require(msg.value == totalRent,"Please enter correct amount of ether");
-        //  require(carMapping[_carID].checkAvailability== carStatus.onHold,"Please Stop your car first");
-         owner.transfer(msg.value);
+         require(_rent == totalRent,"Please enter correct amount of ether");
+
+        //  owner.transfer(msg.value);
+         transfer(owner,_rent);
          carMapping[_carID].checkAvailability = carStatus.available;
+         carMapping[_carID].rentedBy = address(0);
          emit rentPaid(msg.sender,carMapping[_carID].carName,_carID,totalRent);
          
     }
